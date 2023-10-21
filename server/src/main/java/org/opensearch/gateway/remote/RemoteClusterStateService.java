@@ -637,16 +637,19 @@ public class RemoteClusterStateService implements Closeable {
     private void setSlowWriteLoggingThreshold(TimeValue slowWriteLoggingThreshold) {
         this.slowWriteLoggingThreshold = slowWriteLoggingThreshold;
     }
-    private void setIndexMetadataUploadWaitTime(TimeValue newIndexMetadataUploadWaitTime){
+
+    private void setIndexMetadataUploadWaitTime(TimeValue newIndexMetadataUploadWaitTime) {
         indexMetadataUploadWaitTime = newIndexMetadataUploadWaitTime;
     }
-    private void setGlobalMetadataUploadWaitTime(TimeValue newGlobalMetadataUploadWaitTime){
+
+    private void setGlobalMetadataUploadWaitTime(TimeValue newGlobalMetadataUploadWaitTime) {
         globalMetadataUploadWaitTime = newGlobalMetadataUploadWaitTime;
     }
 
     public static TimeValue getIndexMetadataUploadWaitTime() {
         return indexMetadataUploadWaitTime;
     }
+
     public static TimeValue getGlobalMetadataUploadWaitTime() {
         return globalMetadataUploadWaitTime;
     }
