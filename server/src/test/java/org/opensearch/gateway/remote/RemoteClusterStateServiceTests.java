@@ -102,6 +102,7 @@ import static org.mockito.Mockito.when;
 public class RemoteClusterStateServiceTests extends OpenSearchTestCase {
 
     private RemoteClusterStateService remoteClusterStateService;
+    private ClusterSettings clusterSettings;
     private Supplier<RepositoriesService> repositoriesServiceSupplier;
     private RepositoriesService repositoriesService;
     private BlobStoreRepository blobStoreRepository;
@@ -140,6 +141,7 @@ public class RemoteClusterStateServiceTests extends OpenSearchTestCase {
             ).flatMap(Function.identity()).collect(toList())
         );
 
+        clusterSettings = new ClusterSettings(settings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS);
         blobStoreRepository = mock(BlobStoreRepository.class);
         blobStore = mock(BlobStore.class);
         when(blobStoreRepository.blobStore()).thenReturn(blobStore);
@@ -149,7 +151,7 @@ public class RemoteClusterStateServiceTests extends OpenSearchTestCase {
             "test-node-id",
             repositoriesServiceSupplier,
             settings,
-            new ClusterSettings(settings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS),
+            clusterSettings,
             () -> 0L,
             threadPool
         );
@@ -1051,6 +1053,33 @@ public class RemoteClusterStateServiceTests extends OpenSearchTestCase {
 
         latch.countDown();
         assertBusy(() -> assertEquals(1, callCount.get()));
+    }
+
+    public void testIndexMetadataUploadWaitTimeSetting() {
+        // verify default value
+        assertEquals(RemoteClusterStateService.INDEX_METADATA_UPLOAD_TIMEOUT, RemoteClusterStateService.getIndexMetadataUploadTimeout());
+
+        // verify update index metadata upload timeout
+        int indexMetadataUploadTimeout = randomIntBetween(1, 10);
+        Settings newSettings = Settings.builder()
+            .put("cluster.remote_store.index_metadata.upload_timeout", indexMetadataUploadTimeout + "s")
+            .build();
+        clusterSettings.applySettings(newSettings);
+        assertEquals(indexMetadataUploadTimeout, RemoteClusterStateService.getIndexMetadataUploadTimeout().seconds());
+
+    }
+
+    public void testGlobalMetadataUploadWaitTimeSetting() {
+        // verify default value
+        assertEquals(RemoteClusterStateService.GLOBAL_METADATA_UPLOAD_TIMEOUT, RemoteClusterStateService.getGlobalMetadataUploadTimeout());
+
+        // verify update global metadata upload timeout
+        int globalMetadataUploadTimeout = randomIntBetween(1, 10);
+        Settings newSettings = Settings.builder()
+            .put("cluster.remote_store.global_metadata.upload_timeout", globalMetadataUploadTimeout + "s")
+            .build();
+        clusterSettings.applySettings(newSettings);
+        assertEquals(globalMetadataUploadTimeout, RemoteClusterStateService.getGlobalMetadataUploadTimeout().seconds());
     }
 
     private void mockObjectsForGettingPreviousClusterUUID(Map<String, String> clusterUUIDsPointers) throws IOException {
