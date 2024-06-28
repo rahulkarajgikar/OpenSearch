@@ -107,6 +107,7 @@ public abstract class ReplicaShardBatchAllocator extends ReplicaShardAllocator {
                 fetchData(List.of(unassignedShard), Collections.emptyList(), allocation)
             );
         };
+        logger.info("makeAllocationDecision calling getUnassignedShardAllocationDecision");
         return getUnassignedShardAllocationDecision(unassignedShard, allocation, fetchDataResultSupplier);
     }
 
@@ -122,12 +123,15 @@ public abstract class ReplicaShardBatchAllocator extends ReplicaShardAllocator {
         Map<ShardRouting, AllocateUnassignedDecision> ineligibleShardAllocationDecisions = new HashMap<>();
 
         for (ShardRouting shard : shardRoutings) {
+            logger.info("allocateUnassignedBatch calling getUnassignedShardAllocationDecision in eligibility block");
             AllocateUnassignedDecision shardDecisionWithoutFetch = getUnassignedShardAllocationDecision(shard, allocation, null);
             // Without fetchData, decision for in-eligible shards is non-null from our preliminary checks and null for eligible shards.
             if (shardDecisionWithoutFetch != null) {
+                logger.info("marking shard: [{}] as ineligible", shard);
                 ineligibleShards.add(shard);
                 ineligibleShardAllocationDecisions.put(shard, shardDecisionWithoutFetch);
             } else {
+                logger.info("marking shard: [{}] as eligible", shard);
                 eligibleShards.add(shard);
             }
         }
@@ -150,6 +154,7 @@ public abstract class ReplicaShardBatchAllocator extends ReplicaShardAllocator {
                     // The shard's eligibility is being recomputed again as
                     // the routing allocation state is updated during shard allocation decision execution
                     // because of which allocation eligibility of other unassigned shards can change.
+                    logger.info("allocateUnassignedBatch calling getUnassignedShardAllocationDecision in unassigned shard loop block");
                     allocateUnassignedDecision = getUnassignedShardAllocationDecision(
                         unassignedShard,
                         allocation,
@@ -167,24 +172,38 @@ public abstract class ReplicaShardBatchAllocator extends ReplicaShardAllocator {
         Supplier<Map<DiscoveryNode, StoreFilesMetadata>> nodeStoreFileMetaDataMapSupplier
     ) {
         if (!isResponsibleFor(shardRouting)) {
+            logger.info("[getUnassignedShardAllocationDecision] not responsible, returning: {}", AllocateUnassignedDecision.NOT_TAKEN);
             return AllocateUnassignedDecision.NOT_TAKEN;
         }
         Tuple<Decision, Map<String, NodeAllocationResult>> result = canBeAllocatedToAtLeastOneNode(shardRouting, allocation);
 
         final boolean explain = allocation.debugDecision();
         Decision allocationDecision = result.v1();
+        logger.info("[getUnassignedShardAllocationDecision] shardRouting: [{}], explain: [{}], decision: [{}], hasInitiatedFetching: [{}]", shardRouting, explain, allocationDecision.type(), hasInitiatedFetching(shardRouting));
         if (allocationDecision.type() != Decision.Type.YES && (!explain || !hasInitiatedFetching(shardRouting))) {
             // only return early if we are not in explain mode, or we are in explain mode but we have not
             // yet attempted to fetch any shard data
             logger.trace("{}: ignoring allocation, can't be allocated on any node", shardRouting);
+            AllocateUnassignedDecision returnValue = AllocateUnassignedDecision.no(
+                UnassignedInfo.AllocationStatus.fromDecision(allocationDecision.type()),
+                result.v2() != null ? new ArrayList<>(result.v2().values()) : null
+            );
+            logger.info("[getUnassignedShardAllocationDecision] inside non yes block, returnValue: {}", returnValue);
+            return returnValue;
+            /*
             return AllocateUnassignedDecision.no(
                 UnassignedInfo.AllocationStatus.fromDecision(allocationDecision.type()),
                 result.v2() != null ? new ArrayList<>(result.v2().values()) : null
             );
+            */
         }
         if (nodeStoreFileMetaDataMapSupplier != null) {
             Map<DiscoveryNode, StoreFilesMetadata> discoveryNodeStoreFilesMetadataMap = nodeStoreFileMetaDataMapSupplier.get();
-            return getAllocationDecision(shardRouting, allocation, discoveryNodeStoreFilesMetadataMap, result, logger);
+            logger.info("[getUnassignedShardAllocationDecision] inside nodeStoreFileMetaDataMapSupplier != null block" );
+            AllocateUnassignedDecision returnValue = getAllocationDecision(shardRouting, allocation, discoveryNodeStoreFilesMetadataMap, result, logger);
+            logger.info("[getUnassignedShardAllocationDecision] returnValue: {}", returnValue);
+            return returnValue;
+            //return getAllocationDecision(shardRouting, allocation, discoveryNodeStoreFilesMetadataMap, result, logger);
         }
         return null;
     }

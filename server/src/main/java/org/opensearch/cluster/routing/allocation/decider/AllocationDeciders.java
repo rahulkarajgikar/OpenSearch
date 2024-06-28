@@ -89,6 +89,15 @@ public class AllocationDeciders extends AllocationDecider {
         for (AllocationDecider allocationDecider : allocations) {
             Decision decision = allocationDecider.canAllocate(shardRouting, node, allocation);
             // short track if a NO is returned.
+            logger.info(
+                "Can not allocate [{}] on node [{}] due to [{}]: decisions: [{}]. type: [{}], explanation: [{}]",
+                shardRouting,
+                node.node(),
+                allocationDecider.getClass().getSimpleName(),
+                decision.getDecisions(),
+                decision.type(),
+                decision.getExplanation()
+            );
             if (decision == Decision.NO) {
                 if (logger.isTraceEnabled()) {
                     logger.trace(

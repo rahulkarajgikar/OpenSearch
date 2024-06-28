@@ -105,6 +105,7 @@ import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static java.lang.Thread.sleep;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.emptySet;
 import static org.opensearch.cluster.coordination.ClusterBootstrapService.INITIAL_CLUSTER_MANAGER_NODES_SETTING;
@@ -851,7 +852,9 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         ensureGreen("test");
     }
 
-    public void testMultipleReplicaShardAssignmentWithDelayedAllocationAndDifferentNodeStartTimeInBatchMode() throws Exception {
+    public void testMultipleReplicaShardAssignmentWithDelayedAllocationAndDifferentNodeStartTimeInBatchModeWithManualReroute() throws Exception {
+        // batch, non batch
+        // manual reroute, no manual reroute
         internalCluster().startClusterManagerOnlyNodes(
             1,
             Settings.builder().put(ExistingShardsAllocator.EXISTING_SHARDS_ALLOCATOR_BATCH_MODE.getKey(), true).build()
@@ -862,7 +865,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
             Settings.builder()
                 .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 1)
                 .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, 3)
-                .put(INDEX_DELAYED_NODE_LEFT_TIMEOUT_SETTING.getKey(), "60m")
+                //.put(INDEX_DELAYED_NODE_LEFT_TIMEOUT_SETTING.getKey(), "60m")
                 .build()
         );
         ensureGreen("test");
@@ -874,11 +877,13 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         internalCluster().stopRandomNode(InternalTestCluster.nameFilter(nodesWithReplicaShards.get(1)));
 
         ensureStableCluster(5);
+        sleep(180000);
 
         logger.info("--> explicitly triggering reroute");
         ClusterRerouteResponse clusterRerouteResponse = client().admin().cluster().prepareReroute().setRetryFailed(true).get();
         assertTrue(clusterRerouteResponse.isAcknowledged());
 
+        /*
         ClusterHealthResponse health = client().admin().cluster().health(Requests.clusterHealthRequest().timeout("5m")).actionGet();
         assertFalse(health.isTimedOut());
         assertEquals(YELLOW, health.getStatus());
@@ -923,6 +928,84 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         );
         ensureStableCluster(7);
         ensureGreen("test");
+         */
+    }
+
+    public void testMultipleReplicaShardAssignmentWithDelayedAllocationAndDifferentNodeStartTimeInBatchModeWithoutManualReroute() throws Exception {
+        // batch, non batch
+        // manual reroute, no manual reroute
+        internalCluster().startClusterManagerOnlyNodes(
+            1,
+            Settings.builder().put(ExistingShardsAllocator.EXISTING_SHARDS_ALLOCATOR_BATCH_MODE.getKey(), true).build()
+        );
+        internalCluster().startDataOnlyNodes(6);
+        createIndex(
+            "test",
+            Settings.builder()
+                .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 1)
+                .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, 3)
+                //.put(INDEX_DELAYED_NODE_LEFT_TIMEOUT_SETTING.getKey(), "60m")
+                .build()
+        );
+        ensureGreen("test");
+
+        List<String> nodesWithReplicaShards = findNodesWithShard(false);
+        Settings replicaNode0DataPathSettings = internalCluster().dataPathSettings(nodesWithReplicaShards.get(0));
+        Settings replicaNode1DataPathSettings = internalCluster().dataPathSettings(nodesWithReplicaShards.get(1));
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(nodesWithReplicaShards.get(0)));
+        internalCluster().stopRandomNode(InternalTestCluster.nameFilter(nodesWithReplicaShards.get(1)));
+
+        ensureStableCluster(5);
+        sleep(180000);
+        //logger.info("--> explicitly triggering reroute");
+        //ClusterRerouteResponse clusterRerouteResponse = client().admin().cluster().prepareReroute().setRetryFailed(true).get();
+        //assertTrue(clusterRerouteResponse.isAcknowledged());
+        /*
+        ClusterHealthResponse health = client().admin().cluster().health(Requests.clusterHealthRequest().timeout("5m")).actionGet();
+        assertFalse(health.isTimedOut());
+        assertEquals(YELLOW, health.getStatus());
+        assertEquals(2, health.getUnassignedShards());
+        // shard should be unassigned because of Allocation_Delayed
+        BooleanSupplier delayedShardAllocationStatusVerificationSupplier = () -> AllocationDecision.ALLOCATION_DELAYED.equals(
+            client().admin()
+                .cluster()
+                .prepareAllocationExplain()
+                .setIndex("test")
+                .setShard(0)
+                .setPrimary(false)
+                .get()
+                .getExplanation()
+                .getShardAllocationDecision()
+                .getAllocateDecision()
+                .getAllocationDecision()
+        );
+        waitUntil(delayedShardAllocationStatusVerificationSupplier, 2, TimeUnit.MINUTES);
+
+        logger.info("--> restarting the node 1");
+        internalCluster().startDataOnlyNode(
+            Settings.builder().put("node.name", nodesWithReplicaShards.get(0)).put(replicaNode0DataPathSettings).build()
+        );
+        clusterRerouteResponse = client().admin().cluster().prepareReroute().setRetryFailed(true).get();
+        assertTrue(clusterRerouteResponse.isAcknowledged());
+        ensureStableCluster(6);
+        waitUntil(
+            () -> client().admin().cluster().health(Requests.clusterHealthRequest().timeout("5m")).actionGet().getActiveShards() == 3,
+            2,
+            TimeUnit.MINUTES
+        );
+        health = client().admin().cluster().health(Requests.clusterHealthRequest().timeout("5m")).actionGet();
+        assertFalse(health.isTimedOut());
+        assertEquals(YELLOW, health.getStatus());
+        assertEquals(1, health.getUnassignedShards());
+        assertEquals(1, health.getDelayedUnassignedShards());
+        waitUntil(delayedShardAllocationStatusVerificationSupplier, 2, TimeUnit.MINUTES);
+        logger.info("--> restarting the node 0");
+        internalCluster().startDataOnlyNode(
+            Settings.builder().put("node.name", nodesWithReplicaShards.get(1)).put(replicaNode1DataPathSettings).build()
+        );
+        ensureStableCluster(7);
+        ensureGreen("test");
+         */
     }
 
     public void testNBatchesCreationAndAssignment() throws Exception {

@@ -154,6 +154,7 @@ public class GatewayAllocator implements ExistingShardsAllocator {
         assert replicaShardAllocator != null;
         if (allocation.routingNodes().hasInactiveShards()) {
             // cancel existing recoveries if we have a better match
+            logger.info("[afterPrimariesBeforeReplicas] calling processExistingRecoveries()");
             replicaShardAllocator.processExistingRecoveries(allocation);
         }
     }

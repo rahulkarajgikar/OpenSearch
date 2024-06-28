@@ -266,6 +266,7 @@ public class TransportClusterRerouteAction extends TransportClusterManagerNodeAc
 
         @Override
         public ClusterState execute(ClusterState currentState) {
+            logger.info("inside execute (ClusterState)");
             AllocationService.CommandsResult commandsResult = allocationService.reroute(
                 currentState,
                 request.getCommands(),

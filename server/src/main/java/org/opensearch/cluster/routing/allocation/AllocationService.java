@@ -310,7 +310,7 @@ public class AllocationService {
         for (final ExistingShardsAllocator allocator : existingShardsAllocators.values()) {
             allocator.applyFailedShards(failedShards, allocation);
         }
-
+        logger.info("[applyFailedShards] Calling reroute(allocation)");
         reroute(allocation);
         String failedShardsAsString = firstListElementsToCommaDelimitedString(
             failedShards,
@@ -484,6 +484,7 @@ public class AllocationService {
     }
 
     public CommandsResult reroute(final ClusterState clusterState, AllocationCommands commands, boolean explain, boolean retryFailed) {
+        logger.info("inside reroute(ClusterState, AllocationCommands, explain, retryFailed)");
         RoutingNodes routingNodes = getMutableRoutingNodes(clusterState);
         // we don't shuffle the unassigned shards here, to try and get as close as possible to
         // a consistent result of the effect the commands have on the routing
@@ -521,6 +522,7 @@ public class AllocationService {
      */
     public ClusterState reroute(ClusterState clusterState, String reason) {
         ClusterState fixedClusterState = adaptAutoExpandReplicas(clusterState);
+        logger.info("inside reroute (ClusterState)");
 
         RoutingNodes routingNodes = getMutableRoutingNodes(fixedClusterState);
         // shuffle the unassigned nodes, just so we won't have things like poison failed shards
@@ -562,9 +564,9 @@ public class AllocationService {
         assert AutoExpandReplicas.getAutoExpandReplicaChanges(allocation.metadata(), allocation).isEmpty()
             : "auto-expand replicas out of sync with number of nodes in the cluster";
         assert assertInitialized();
+        logger.info("inside reroute (RoutingAllocation)");
         long rerouteStartTimeNS = System.nanoTime();
         removeDelayMarkers(allocation);
-
         allocateExistingUnassignedShards(allocation);  // try to allocate existing shard copies first
         shardsAllocator.allocate(allocation);
         clusterManagerMetrics.recordLatency(
@@ -576,7 +578,7 @@ public class AllocationService {
 
     private void allocateExistingUnassignedShards(RoutingAllocation allocation) {
         allocation.routingNodes().unassigned().sort(PriorityComparator.getAllocationComparator(allocation)); // sort for priority ordering
-
+        logger.info("inside allocateExistingUnassignedShards(RoutingAllocation)");
         for (final ExistingShardsAllocator existingShardsAllocator : existingShardsAllocators.values()) {
             existingShardsAllocator.beforeAllocation(allocation);
         }
@@ -589,6 +591,7 @@ public class AllocationService {
              If we do not have any custom allocator set then we will be using ShardsBatchGatewayAllocator
              Currently AllocationService will not run any custom Allocator that implements allocateAllUnassignedShards
              */
+            logger.info("Batch mode enabled");
             allocateAllUnassignedShards(allocation);
             return;
         }

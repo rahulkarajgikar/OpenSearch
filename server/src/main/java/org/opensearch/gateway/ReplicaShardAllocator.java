@@ -203,21 +203,31 @@ public abstract class ReplicaShardAllocator extends BaseGatewayShardAllocator {
     ) {
         if (isResponsibleFor(unassignedShard) == false) {
             // this allocator is not responsible for deciding on this shard
+            logger.info("[makeAllocationDecision] not responsible, returning: {}", AllocateUnassignedDecision.NOT_TAKEN);
             return AllocateUnassignedDecision.NOT_TAKEN;
         }
 
         // pre-check if it can be allocated to any node that currently exists, so we won't list the store for it for nothing
         Tuple<Decision, Map<String, NodeAllocationResult>> result = canBeAllocatedToAtLeastOneNode(unassignedShard, allocation);
         Decision allocateDecision = result.v1();
+        logger.info("[makeAllocationDecision] unassignedShard: [{}], explain: [{}], decision: [{}], hasInitiatedFetching: [{}]", unassignedShard, allocation.debugDecision(), allocateDecision.type(), hasInitiatedFetching(unassignedShard));
         if (allocateDecision.type() != Decision.Type.YES
             && (allocation.debugDecision() == false || hasInitiatedFetching(unassignedShard) == false)) {
             // only return early if we are not in explain mode, or we are in explain mode but we have not
             // yet attempted to fetch any shard data
             logger.trace("{}: ignoring allocation, can't be allocated on any node", unassignedShard);
+            AllocateUnassignedDecision returnValue = AllocateUnassignedDecision.no(
+                UnassignedInfo.AllocationStatus.fromDecision(allocateDecision.type()),
+                result.v2() != null ? new ArrayList<>(result.v2().values()) : null
+            );
+            logger.info("returnValue: [{}]", returnValue);
+            return returnValue;
+            /*
             return AllocateUnassignedDecision.no(
                 UnassignedInfo.AllocationStatus.fromDecision(allocateDecision.type()),
                 result.v2() != null ? new ArrayList<>(result.v2().values()) : null
             );
+            */
         }
 
         AsyncShardFetch.FetchResult<NodeStoreFilesMetadata> shardStores = fetchData(unassignedShard, allocation);
@@ -234,7 +244,8 @@ public abstract class ReplicaShardAllocator extends BaseGatewayShardAllocator {
     ) {
         if (nodeShardStores == null) {
             // node shard stores is null when we don't have data yet and still fetching the shard stores
-            logger.trace("{}: ignoring allocation, still fetching shard stores", unassignedShard);
+            //logger.trace("{}: ignoring allocation, still fetching shard stores", unassignedShard);
+            logger.info("{}: ignoring allocation, still fetching shard stores", unassignedShard);
             allocation.setHasPendingAsyncFetch();
             List<NodeAllocationResult> nodeDecisions = null;
             if (allocation.debugDecision()) {
@@ -286,6 +297,7 @@ public abstract class ReplicaShardAllocator extends BaseGatewayShardAllocator {
             RoutingNode nodeWithHighestMatch = allocation.routingNodes().node(matchingNodes.getNodeWithHighestMatch().getId());
             // we only check on THROTTLE since we checked before on NO
             Decision decision = allocation.deciders().canAllocate(unassignedShard, nodeWithHighestMatch, allocation);
+            logger.info("[getAllocationDecision] decision: [{}]", decision.type());
             if (decision.type() == Decision.Type.THROTTLE) {
                 logger.debug(
                     "[{}][{}]: throttling allocation [{}] to [{}] in order to reuse its unallocated persistent store",
