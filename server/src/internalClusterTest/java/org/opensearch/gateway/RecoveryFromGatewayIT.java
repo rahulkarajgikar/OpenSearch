@@ -859,7 +859,7 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
             1,
             Settings.builder().put(ExistingShardsAllocator.EXISTING_SHARDS_ALLOCATOR_BATCH_MODE.getKey(), true).build()
         );
-        internalCluster().startDataOnlyNodes(6);
+        internalCluster().startDataOnlyNodes(5);
         createIndex(
             "test",
             Settings.builder()
@@ -931,14 +931,17 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
          */
     }
 
+    // Add tests for:
+    // 1. batch, manual reroute
+    // non batch
+    // manual reroute, no manual reroute
     public void testMultipleReplicaShardAssignmentWithDelayedAllocationAndDifferentNodeStartTimeInBatchModeWithoutManualReroute() throws Exception {
-        // batch, non batch
-        // manual reroute, no manual reroute
+
         internalCluster().startClusterManagerOnlyNodes(
             1,
             Settings.builder().put(ExistingShardsAllocator.EXISTING_SHARDS_ALLOCATOR_BATCH_MODE.getKey(), true).build()
         );
-        internalCluster().startDataOnlyNodes(6);
+        internalCluster().startDataOnlyNodes(5);
         createIndex(
             "test",
             Settings.builder()
