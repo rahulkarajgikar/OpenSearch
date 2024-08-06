@@ -118,6 +118,7 @@ public abstract class BaseGatewayShardAllocator {
                 allocation.changes()
             );
         } else {
+            logger.info("Removing and ignoring shard: {} with decision: {}", shardRouting, allocateUnassignedDecision.getAllocationDecision());
             unassignedAllocationHandler.removeAndIgnore(allocateUnassignedDecision.getAllocationStatus(), allocation.changes());
         }
     }

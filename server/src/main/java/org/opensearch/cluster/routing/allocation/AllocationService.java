@@ -567,6 +567,7 @@ public class AllocationService {
         removeDelayMarkers(allocation);
 
         allocateExistingUnassignedShards(allocation);  // try to allocate existing shard copies first
+        // balanced shard allocator called here after allocateExistingUnassignedShards
         shardsAllocator.allocate(allocation);
         clusterManagerMetrics.recordLatency(
             clusterManagerMetrics.rerouteHistogram,

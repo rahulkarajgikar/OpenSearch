@@ -41,7 +41,7 @@ import java.util.function.Consumer;
  *
  * @opensearch.internal
  */
-public class LocalStorePeerRecoverySourceHandler extends RecoverySourceHandler {
+public class LocalStorePeerRecoverySourceHandler extends  RecoverySourceHandler {
 
     public LocalStorePeerRecoverySourceHandler(
         IndexShard shard,
@@ -53,6 +53,7 @@ public class LocalStorePeerRecoverySourceHandler extends RecoverySourceHandler {
         int maxConcurrentOperations
     ) {
         super(shard, recoveryTarget, threadPool, request, fileChunkSizeInBytes, maxConcurrentFileChunks, maxConcurrentOperations);
+        logger.info("creating local store peer recovery handler for shard: {}", shard);
     }
 
     @Override

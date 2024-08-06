@@ -41,6 +41,7 @@ public class RemoteStorePeerRecoverySourceHandler extends RecoverySourceHandler 
         int maxConcurrentOperations
     ) {
         super(shard, recoveryTarget, threadPool, request, fileChunkSizeInBytes, maxConcurrentFileChunks, maxConcurrentOperations);
+        logger.info("remote store peer recovery for shard:{}", shard);
     }
 
     @Override

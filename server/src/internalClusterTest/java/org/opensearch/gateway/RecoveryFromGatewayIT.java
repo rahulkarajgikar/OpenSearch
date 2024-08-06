@@ -1084,6 +1084,110 @@ public class RecoveryFromGatewayIT extends OpenSearchIntegTestCase {
         ensureGreen("test");
     }
 
+    public void testMultipleReplicaShardAssignmentBatchMode() throws Exception {
+        internalCluster().startClusterManagerOnlyNodes(
+            1,
+            Settings.builder().put(ExistingShardsAllocator.EXISTING_SHARDS_ALLOCATOR_BATCH_MODE.getKey(), true).build()
+        );
+        internalCluster().startDataOnlyNodes(6);
+        createIndex(
+            "test1",
+            Settings.builder()
+                .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 1)
+                .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, 1)
+                .build()
+        );
+        ensureGreen("test1");
+        createIndex(
+            "test2",
+            Settings.builder()
+                .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 1)
+                .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, 2)
+                .build()
+        );
+        ensureGreen("test2");
+        createIndex(
+            "test3",
+            Settings.builder()
+                .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 1)
+                .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, 3)
+                .build()
+        );
+        ensureGreen("test3");
+        createIndex(
+            "test4",
+            Settings.builder()
+                .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 1)
+                .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, 4)
+                .build()
+        );
+        ensureGreen("test4");
+        createIndex(
+            "test5",
+            Settings.builder()
+                .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 1)
+                .put(IndexMetadata.SETTING_NUMBER_OF_REPLICAS, 5)
+                .build()
+        );
+        ensureGreen("test5");
+
+        logger.info("--> begin full cluster restart");
+        internalCluster().fullRestart();
+        logger.info("--> completed full cluster restart");
+
+        ensureStableCluster(7);
+        /*
+        logger.info("--> explicitly triggering reroute");
+        ClusterRerouteResponse clusterRerouteResponse = client().admin().cluster().prepareReroute().setRetryFailed(true).get();
+        assertTrue(clusterRerouteResponse.isAcknowledged());
+
+        ClusterHealthResponse health = client().admin().cluster().health(Requests.clusterHealthRequest().timeout("5m")).actionGet();
+        assertFalse(health.isTimedOut());
+        assertEquals(YELLOW, health.getStatus());
+        assertEquals(2, health.getUnassignedShards());
+        // shard should be unassigned because of Allocation_Delayed
+        BooleanSupplier delayedShardAllocationStatusVerificationSupplier = () -> AllocationDecision.ALLOCATION_DELAYED.equals(
+            client().admin()
+                .cluster()
+                .prepareAllocationExplain()
+                .setIndex("test")
+                .setShard(0)
+                .setPrimary(false)
+                .get()
+                .getExplanation()
+                .getShardAllocationDecision()
+                .getAllocateDecision()
+                .getAllocationDecision()
+        );
+        waitUntil(delayedShardAllocationStatusVerificationSupplier, 2, TimeUnit.MINUTES);
+
+        logger.info("--> restarting the node 1");
+        internalCluster().startDataOnlyNode(
+            Settings.builder().put("node.name", nodesWithReplicaShards.get(0)).put(replicaNode0DataPathSettings).build()
+        );
+        clusterRerouteResponse = client().admin().cluster().prepareReroute().setRetryFailed(true).get();
+        assertTrue(clusterRerouteResponse.isAcknowledged());
+        ensureStableCluster(6);
+        waitUntil(
+            () -> client().admin().cluster().health(Requests.clusterHealthRequest().timeout("5m")).actionGet().getActiveShards() == 3,
+            2,
+            TimeUnit.MINUTES
+        );
+        health = client().admin().cluster().health(Requests.clusterHealthRequest().timeout("5m")).actionGet();
+        assertFalse(health.isTimedOut());
+        assertEquals(YELLOW, health.getStatus());
+        assertEquals(1, health.getUnassignedShards());
+        assertEquals(1, health.getDelayedUnassignedShards());
+        waitUntil(delayedShardAllocationStatusVerificationSupplier, 2, TimeUnit.MINUTES);
+        logger.info("--> restarting the node 0");
+        internalCluster().startDataOnlyNode(
+            Settings.builder().put("node.name", nodesWithReplicaShards.get(1)).put(replicaNode1DataPathSettings).build()
+        );
+        ensureStableCluster(7);
+        ensureGreen("test");
+         */
+    }
+
     public void testAllocationExplainReturnsNoWhenExtraReplicaShardInNonBatchMode() throws Exception {
         // Non batch mode - This test is to validate that we don't return AWAITING_INFO in allocation explain API when the deciders are
         // returning NO

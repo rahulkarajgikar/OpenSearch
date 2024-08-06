@@ -169,8 +169,9 @@ public class LocalShardsBalancer extends ShardsBalancer {
      */
     @Override
     void balance() {
+        logger.info("Balancing cluster in LocalShardsBalancer");
         if (logger.isTraceEnabled()) {
-            logger.trace("Start balancing cluster");
+            logger.info("Start balancing cluster");
         }
         if (allocation.hasPendingAsyncFetch()) {
             /*
@@ -180,17 +181,18 @@ public class LocalShardsBalancer extends ShardsBalancer {
              * since once the fetches come back we might just move all the shards back again.
              * Therefore we only do a rebalance if we have fetched all information.
              */
-            logger.debug("skipping rebalance due to in-flight shard/store fetches");
+            logger.info("skipping rebalance due to in-flight shard/store fetches");
             return;
         }
         if (allocation.deciders().canRebalance(allocation).type() != Decision.Type.YES) {
-            logger.trace("skipping rebalance as it is disabled");
+            logger.info("skipping rebalance as it is disabled");
             return;
         }
         if (nodes.size() < 2) { /* skip if we only have one node */
-            logger.trace("skipping rebalance as single node only");
+            logger.info("skipping rebalance as single node only");
             return;
         }
+        logger.info("calling balanceByWeights in localshardsbalancer");
         balanceByWeights();
     }
 
@@ -748,14 +750,17 @@ public class LocalShardsBalancer extends ShardsBalancer {
     @Override
     void allocateUnassigned() {
         RoutingNodes.UnassignedShards unassigned = routingNodes.unassigned();
+        logger.info("in allocateUnassigned of LocalShardsBalancer. unassigned shards: {}", unassigned);
         assert !nodes.isEmpty();
         if (logger.isTraceEnabled()) {
             logger.trace("Start allocating unassigned shards");
         }
         if (unassigned.isEmpty()) {
+            logger.info("unassigned is empty");
             return;
         }
 
+        logger.info("did not return early from localshardsbalancer.allocateUnassigned()");
         /*
          * TODO: We could be smarter here and group the shards by index and then
          * use the sorter to save some iterations.

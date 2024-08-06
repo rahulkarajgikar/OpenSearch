@@ -290,6 +290,7 @@ public class BalancedShardsAllocator implements ShardsAllocator {
             failAllocationOfNewPrimaries(allocation);
             return;
         }
+        logger.info("in allocate of BalancedShardAllocator");
         final ShardsBalancer localShardsBalancer = new LocalShardsBalancer(
             logger,
             allocation,
