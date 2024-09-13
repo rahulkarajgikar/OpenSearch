@@ -103,7 +103,7 @@ public class NodeConnectionsService extends AbstractLifecycleComponent {
 
     // contains an entry for every node in the latest cluster state, as well as for nodes from which we are in the process of
     // disconnecting
-    private final Map<DiscoveryNode, ConnectionTarget> targetsByNode = new HashMap<>();
+    protected final Map<DiscoveryNode, ConnectionTarget> targetsByNode = new HashMap<>();
 
     private final TimeValue reconnectInterval;
     private volatile ConnectionChecker connectionChecker;
@@ -113,6 +113,11 @@ public class NodeConnectionsService extends AbstractLifecycleComponent {
         this.threadPool = threadPool;
         this.transportService = transportService;
         this.reconnectInterval = NodeConnectionsService.CLUSTER_NODE_RECONNECT_INTERVAL_SETTING.get(settings);
+    }
+
+    // exposed for testing
+    protected ConnectionTarget createConnectionTarget(DiscoveryNode discoveryNode) {
+        return new ConnectionTarget(discoveryNode);
     }
 
     /**
@@ -157,6 +162,14 @@ public class NodeConnectionsService extends AbstractLifecycleComponent {
             }
         }
         runnables.forEach(Runnable::run);
+    }
+
+    public void setPendingDisconnections(Set<DiscoveryNode> nodes) {
+        nodes.forEach(transportService::setPendingDisconnection);
+    }
+
+    public void clearPendingDisconnections() {
+        transportService.clearPendingDisconnections();
     }
 
     /**
@@ -321,7 +334,7 @@ public class NodeConnectionsService extends AbstractLifecycleComponent {
      *
      * @opensearch.internal
      */
-    private class ConnectionTarget {
+    protected class ConnectionTarget {
         private final DiscoveryNode discoveryNode;
 
         private PlainListenableActionFuture<Void> future = PlainListenableActionFuture.newListenableFuture();
